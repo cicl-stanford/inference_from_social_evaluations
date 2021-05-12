@@ -1,0 +1,665 @@
+---
+title: "Fishermen"
+author: "Tobias Gerstenberg & Zach Davis"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 4
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+---
+
+# Load packages 
+
+```{r, message=F}
+library("knitr")       # for knitting 
+library("janitor")     # for cleaning variable names 
+library("RSQLite")     # for reading in db files 
+library("tidyjson")    # for parsing json files 
+library("corrr")       # for correlations
+library("DT")          # tables in Rmarkdown
+library("grid")        # functions for dealing with images 
+library("xtable")      # for latex tables
+library("png")         # adding pngs to images
+library("egg")         # for geom_custom
+library("patchwork")   # for making figure panels
+library("ggtext")      # for text in ggplots 
+library("kableExtra")  # for knitr tables
+library("lubridate")   # for dealing with dates
+library("modelr")      # for bootstrapping
+library("rsample")     # for bootstrapping
+library("tidyverse")   # for everything else 
+```
+
+```{r}
+theme_set(theme_classic() + 
+    theme(text = element_text(size = 24)))
+
+opts_chunk$set(comment = "",
+               fig.show = "hold")
+
+options(dplyr.summarise.inform = F)
+
+# root mean squared error
+rmse = function(x, y){
+  return(sqrt(mean((x - y)^2)))
+}
+
+# function for printing out html or latex tables 
+print_table = function(data, format = "html", digits = 2){
+  if(format == "html"){
+    data %>% 
+      kable(digits = digits) %>% 
+      kable_styling()
+  }else if(format == "latex"){
+    data %>% 
+      xtable(digits = digits) %>%
+      print(include.rownames = F,
+            booktabs = T)
+  }
+}
+```
+
+# DATA
+
+```{r}
+con = dbConnect(SQLite(),dbname = "../../data/participants_anonymized.db");
+df = dbReadTable(con,"inference_from_blame")
+dbDisconnect(con)
+
+df = df %>% 
+  filter(status %in% c(4, 5))
+```
+
+## Trial info
+
+```{r}
+# trial information 
+df.trialinfo = df$datastring %>% 
+  as.tbl_json() %>% 
+  enter_object("data") %>% 
+  gather_array() %>% 
+  enter_object("trialdata") %>% 
+  gather_object("name") %>% 
+  filter(document.id == 1,
+         name == "situation") %>% 
+  gather_object("index") %>% 
+  append_values_string() %>% 
+  as_tibble() %>% 
+  filter(index != "unknowns",) %>% 
+  pivot_wider(names_from = index, 
+              values_from = string) %>% 
+  select(trial = id,
+         situation = base_image) %>% 
+  mutate(situation = str_remove(situation, ".png")) %>% 
+  filter(!trial %in% c("att1", "att2")) %>% 
+  separate(situation,
+           into = c("trees", "a", "b", "c")) %>% 
+  mutate(trees = as.numeric(str_remove(trees, "t")),
+         trial = as.numeric(trial) + 1,
+         across(a:c,
+                ~ str_extract(., "\\-*\\d+\\.*\\d*"),
+                .names = "{.col}_strength"),
+         across(a:c,
+                ~ str_extract(., "fish|None|trees"),
+                .names = "{.col}_choice"),
+         across(a:c,
+                ~ str_extract(., "low|medium|high"),
+                .names = "{.col}_blame"),
+         ) %>% 
+  select(-c(a:c)) %>% 
+  arrange(trial)
+```
+
+## Model predictions by trial
+
+```{r, message=F}
+df.model = read_csv("../../data/model_results/model_posteriors.csv") %>% 
+  rename(trial = trial_id) %>% 
+  rename_with(.fn = ~ str_c(c("a", "b", "c"),
+                            rep(c("_strength", "_choice", "_blame"), each = 3)),
+              .cols = contains("_")) %>% 
+  mutate(trial = trial + 1,
+         across(contains("choice"), ~ ifelse(. == 0, "fish", "trees"))) %>% 
+  select(-contains("blame")) %>% 
+  pivot_wider(names_from = model,
+              values_from = post) %>% 
+  relocate(trial) #%>% 
+  #select(-reward_maximizer)
+
+df.model.long = df.model %>%
+  pivot_longer(cols = -c(trial, rationality, mixture, pivotality, random),
+               names_to = "question",
+               values_to = "choice",
+               values_transform = list(choice = as.character)) %>%
+  relocate(question, choice, .after = trial) %>%
+  arrange(trial, question, choice)
+```
+
+## Main info
+
+```{r, warning=FALSE}
+# main data 
+df.long = df$datastring %>% 
+  as.tbl_json() %>% 
+  enter_object("data") %>% 
+  gather_array() %>% 
+  enter_object("trialdata") %>% 
+  gather_object() %>% 
+  append_values_string() %>% 
+  as_tibble() %>% 
+  rename(participant = document.id,
+         trial = array.index) %>% 
+  mutate(test = string == "TESTTRIAL") %>% 
+  group_by(participant, trial) %>% 
+  filter(any(test)) %>% 
+  ungroup() %>% 
+  select(participant, trial, name, string) %>% 
+  pivot_wider(names_from = name, 
+              values_from = string) %>% 
+  clean_names() %>% 
+  select(participant, -trial, trial = trial_ix, order = trial_number, a_strength:fish) %>% 
+  mutate(across(a_strength:fish, ~ na_if(., "???")))
+
+# filter out participants who didn't pass both of the attention checks 
+df.long = df.long %>% 
+  mutate(include = trial == "att1" & fish == "4",
+         include = ifelse(trial == "att2" & fish == "0", T, include)) %>% 
+  group_by(participant) %>% 
+  filter(sum(include) == 2) %>% 
+  ungroup() %>% 
+  filter(!trial %in% c("att1", "att2"))
+
+# some more restructuring 
+df.long = df.long %>% 
+  mutate(trial = as.numeric(trial) + 1,
+         across(.cols = contains("strength"),
+                .fns = ~ factor(., levels = 1:3)),
+         across(.cols = contains("choice"),
+                .fns = ~ factor(., levels = c("fish", "trees"))),
+         trees = str_extract(trees, "\\-*\\d+\\.*\\d*"),
+         trees = factor(trees, levels = 1:3)) %>% 
+  select(-c(fish, order, include)) %>% 
+  pivot_longer(cols = -c(participant, trial),
+               names_to = "question",
+               values_to = "choice") %>% 
+  na.omit() %>% 
+  arrange(participant, trial)
+
+# writing out for use in python
+df.long %>% write_csv('../../data/df.long.csv')
+
+# aggregated results combined with model predictions 
+df.aggregate = df.long %>% 
+  count(trial, question, choice) %>% 
+  group_by(trial, question) %>% 
+  mutate(people = n/sum(n),
+         choice = as.character(choice)) %>% 
+  ungroup() %>% 
+  left_join(df.model.long,
+            by = c("trial", "question", "choice")) %>% 
+  select(-n) %>% 
+  # double check that these steps below are valid
+  group_by(trial, question, choice) %>% 
+  summarize(people = mean(people),
+            across(.cols = c(rationality:mixture),
+                   .fns = ~ sum(.))) %>% 
+  ungroup() %>% 
+  pivot_longer(cols = people:mixture,
+               names_to = "index",
+               values_to = "value")
+```
+
+## Demographic info
+
+```{r}
+# demographics 
+df.demographics = df$datastring %>% 
+  as.tbl_json() %>%
+  enter_object("questiondata") %>% 
+  gather_object() %>% 
+  append_values_string() %>% 
+  as_tibble() %>% 
+  rename(participant = document.id) %>% 
+  pivot_wider(names_from = name,
+              values_from = string) %>% 
+  mutate(begin = df$beginhit,
+         end =  df$endhit,
+         time = as.duration(interval(ymd_hms(df$beginexp), ymd_hms(df$endhit)))) %>% 
+  select(-c(begin, end))
+
+df.demographics %>% 
+  filter(participant %in% unique(df.long$participant)) %>% 
+  mutate(age = as.numeric(age)) %>% 
+  summarize(age_mean = mean(age),
+            age_sd = sd(age),
+            n_female = sum(sex == "female"),
+            n_male = sum(sex == "male"),
+            n_nosay = sum(sex == "noresponse"),
+            time_mean = mean(time) / 60,
+            time_sd = sd(time) / 60) %>% 
+  print_table(digits = 1)
+```
+
+## Feedback 
+
+The question prompt was: "What factors did you take into account when trying to fill in the missing information? Do you have any comments about the experiment?" 
+
+```{r}
+datatable(df.demographics %>% 
+            select(participant, feedback))
+```
+
+# STATS
+
+## Bootstrap confidence intervals on choices 
+
+```{r, eval=FALSE}
+set.seed(1)
+
+# percentages with bootstrapped confidence intervals 
+df.confidence = df.long %>% 
+  mutate(index = str_c(trial, ".", question)) %>%
+  group_by(index) %>% 
+  nest() %>% 
+  mutate(bootstraps = map(.x = data,
+                          .f = ~ bootstrap(.x, n = 100))) %>% 
+  unnest(bootstraps) %>% 
+  mutate(counts = map(.x = strap, 
+                      .f = ~ .x %>% 
+                        as_tibble() %>% 
+                        count(choice))) %>% 
+  select(index, .id, counts) %>% 
+  unnest(counts) %>% 
+  group_by(index, .id) %>% 
+  mutate(p = n / sum(n)) %>% 
+  group_by(index, choice) %>% 
+  summarize(low = quantile(p, probs = 0.025),
+            high = quantile(p, probs = 0.975)) %>% 
+  ungroup() %>% 
+  separate(index,
+           into = c("trial", "question"),
+           sep = "\\.") %>% 
+  mutate(trial = as.numeric(trial))
+
+df.aggregate = df.aggregate %>% 
+  left_join(df.confidence,
+            by = c("trial", "question", "choice")) %>% 
+  mutate(across(c(low, high), ~ ifelse(index != "people", NA, .)))
+
+# save("df.aggregate",
+#      file = "../../data/df_aggregate.RData")
+
+```
+
+
+```{r}
+load(file = "../../data/df_aggregate.RData")
+```
+
+## Correlation matrix 
+
+```{r, warning=FALSE, message=FALSE}
+df.aggregate %>% 
+  pivot_wider(names_from = index,
+              values_from = value) %>% 
+  select(rationality:mixture) %>% 
+  correlate() %>% 
+  shave() %>% 
+  fashion() %>% 
+  print_table()
+```
+
+## Model summary statistics (best fitting parameters, BIC for each model, n ppt best fit)
+
+```{r, warning=FALSE, message=FALSE}
+# per participant model predictions
+df.fit.model = read_csv("../../data/model_results/gen_mix_posts.csv")
+
+df.fit.model =
+  df.fit.model %>%
+  mutate(model_name = case_when(
+    w == 0 ~ "pivotality",
+    w == 1 ~ "rationality",
+    TRUE ~ "mixture"))
+
+# likelihood of judgments if responding randomly, computed from python
+random_loglk = -40.111855503577154
+
+bic = function(k, n, log_lk) (k * log(n)) - (2 * log_lk)
+
+# find best fitting model over all participants
+model_summary = df.fit.model %>%
+  group_by(w, k, rationality_beta, decision_beta, model_name) %>%
+  summarize(loglk = sum(log(lk))) %>%
+  mutate(bic_ = case_when(
+    model_name == "pivotality" ~ bic(1, 36 * 49, loglk),
+    model_name == "rationality" ~ bic(3, 36 * 49, loglk),
+    model_name == "mixture" ~ bic(4, 36 * 49, loglk)
+  )) %>%
+  group_by(model_name) %>%
+  mutate(best_fit = min(bic_)) %>%
+  filter(best_fit == bic_) %>%
+  select(-best_fit) %>%
+  select(-loglk) %>%
+  bind_rows(tibble(w = NA,
+    k = NA,
+    rationality_beta = NA,
+    decision_beta = NA,
+    model_name = "random",
+    bic_ = bic(0, 36 * 49, 49 * random_loglk))) %>%
+  rename(model = model_name,
+         beta_r = rationality_beta,
+         beta_d = decision_beta, BIC = bic_) %>%
+  relocate(model, .before = w) %>%
+  arrange(-BIC)
+
+# getting best fitting by participant
+model_summary_ppt = df.fit.model %>%
+  group_by(model_name, w, k, rationality_beta, decision_beta, participant) %>%
+  summarize(loglk = sum(log(lk))) %>%
+  mutate(bic_ = case_when(
+    model_name == "pivotality" ~ bic(1, 36, loglk),
+    model_name == "rationality" ~ bic(3, 36, loglk),
+    model_name == "mixture" ~ bic(4, 36, loglk)
+  )) %>%
+  ungroup() %>%
+  group_by(participant) %>%
+  mutate(best_fit = min(bic_)) %>%
+  filter(best_fit == bic_) %>%
+  select(-best_fit) %>%
+  mutate(random = bic(0, 36, random_loglk)) %>%
+  mutate(best_model = case_when(
+    random < bic_ ~ "random",
+    model_name == "pivotality" ~ "pivotality",
+    model_name == "rationality" ~ "rationality",
+    model_name == "mixture" ~ "mixture"
+  )) %>%
+  rename(model = best_model)
+
+model_ppt_bestfit = model_summary_ppt %>%
+  select(participant, model)
+
+model_summary %>% 
+  left_join(model_summary_ppt %>%
+              group_by(model) %>%
+              tally(),
+            by = "model") %>%
+  print_table()
+```
+
+
+# PLOTS
+
+## Scatter plots 
+
+```{r fig.height=6, fig.width=18, message=FALSE, warning=FALSE}
+
+df.plot = df.aggregate %>%
+  select(-c(low, high)) %>% 
+  pivot_wider(names_from = "index",
+              values_from = "value") %>% 
+  mutate(question_type = str_extract(question, "trees|strength|choice"))
+
+df.models = tibble(name = c("rationality", "pivotality", "mixture"),
+                   color = c("blue", "red", "purple"))
+
+fun_scatter = function(df_plot, df_models, index){
+  p = ggplot(data = df_plot,
+             mapping = aes_string(x = df_models$name[index],
+                                  y = "people")) + 
+    geom_smooth(method = "lm",
+                mapping = aes(group = 1),
+                fill = df_models$color[index],
+                color = df_models$color[index],
+                alpha = 0.1,
+                show.legend = F) +  
+    geom_point(mapping = aes(fill = question_type),
+               size = 2.5,
+               shape = 21,
+               alpha = 0.75) + 
+    annotate(geom = "text",
+             label = df_plot %>% 
+               summarize(r = cor(people, .data[[df_models$name[index]]]),
+                         rmse = rmse(people, .data[[df_models$name[index]]])) %>% 
+               mutate(across(.fns = ~ round(., 2))) %>% 
+               unlist() %>% 
+               str_c(names(.), " = ", .),
+             x = c(0, 0), 
+             y = c(1, 0.92),
+             size = 7,
+             hjust = 0) +
+    scale_x_continuous(breaks = seq(0, 1, 0.25),
+                       limits = c(0, 1)) + 
+    scale_y_continuous(breaks = seq(0, 1, 0.25),
+                       limits = c(0, 1)) + 
+    scale_fill_manual(values = c("gray80", "gray40", "gray0")) + 
+    labs(x = df_models$name[index],
+         fill = "question") + 
+    theme(legend.position = "none",
+          axis.title.x = element_markdown(color = df_models$color[index]))
+  
+  # add legend to second plot
+  if (index == 1){
+    p = p +
+      theme(legend.position = c(1, 0),
+            legend.justification = c(1, -0.1)) +
+      guides(fill = guide_legend(override.aes = list(size = 6)))
+  }
+  return(p)
+}
+
+
+l.plots = map(.x = 1:3, ~ fun_scatter(df.plot, df.models, .x))
+
+wrap_plots(l.plots,
+           ncol = 3) + 
+  plot_annotation(tag_levels = "A")
+
+# ggsave(str_c("../../figures/plots/scatterplots.pdf"),
+#        width = 18,
+#        height = 6)
+```
+
+## Bar chart and model predictions (all trials)
+
+```{r fig.height=14, fig.width=20, message=FALSE, warning=FALSE}
+df.plot = df.aggregate %>% 
+  select(-c(low, high)) %>% 
+  mutate(choice = str_replace(choice, "trees", "T"),
+         choice = str_replace(choice, "fish", "F"),
+         item = str_c(question, choice),
+         item = str_replace(item, "trees", "t"),
+         item = str_remove(item, "_strength"),
+         item = str_remove(item, "_choice"),
+         question_type = str_extract(question, "trees|strength|choice"))
+  
+ggplot(data = df.plot,
+       mapping = aes(x = item,
+                     y = value)) +
+  geom_col(data = df.plot %>% 
+             filter(index == "people"),
+           mapping = aes(fill = question_type,
+                         linetype = question_type),
+           alpha = 0.5,
+           color = "black") +
+  geom_point(data = df.plot %>% 
+               filter(index %in% c("rationality", "pivotality", 
+                                   "mixture")) %>% 
+               mutate(index = factor(index, levels = c("rationality", "pivotality", 
+                                   "mixture"))),
+             mapping = aes(shape = index,
+                           fill = index),
+             position = position_dodge(width = 0.5),
+             color = "black",
+             stroke = 1,
+             size = 4) +
+  facet_wrap(~trial, scales = "free_x") +
+  labs(linetype = "question",
+       shape = "model") + 
+  scale_y_continuous(breaks = seq(0, 1, 0.25),
+                     labels = seq(0, 100, 25),
+                     expand = expansion(add = c(0, 0.1))) +
+  scale_shape_manual(values = c(21, 23, 24)) + 
+  scale_linetype_manual(values = rep(1, 3)) + 
+  scale_fill_manual(breaks = c("choice", "strength", "trees",
+                               "rationality", "pivotality", "mixture"),
+                    values = c(choice = "gray80", 
+                               strength = "gray40", 
+                               trees = "gray0", 
+                               rationality = "blue", 
+                               pivotality = "red", 
+                               mixture = "purple")) + 
+  theme(legend.position = "bottom",
+        panel.grid.major.y = element_line(),
+        axis.text.y = element_text(size = 14),
+        axis.title = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(face = "bold"),
+        panel.spacing.x = unit(1, "cm"),
+        panel.spacing.y = unit(1, "cm")) + 
+  guides(fill = F,
+         linetype = guide_legend(override.aes = list(fill = c("gray80",
+                                                              "gray40",
+                                                              "gray0"))),
+         shape = guide_legend(override.aes = list(fill = c("blue", "red", "purple"))))
+
+# ggsave("../../figures/plots/all_trials.pdf",
+#        width = 20,
+#        height = 12)
+```
+
+## Bar chart and model predictions (selection)
+
+```{r fig.height=13, fig.width=20, warning=FALSE}
+# plotting example trials
+trials = c(1, 3, 9, 11, 18, 34, 25, 10)
+labels = 1:8
+
+df.plot = df.aggregate %>% 
+  mutate(choice = str_replace(choice, "trees", "T"),
+         choice = str_replace(choice, "fish", "F"),
+         item = str_c(question, choice),
+         item = str_replace(item, "trees", "t"),
+         item = str_remove(item, "_strength"),
+         item = str_remove(item, "_choice"),
+         question_type = str_extract(question, "trees|strength|choice")) %>%
+  filter(trial %in% trials) %>% 
+  mutate(trial = factor(trial,
+                        levels = trials,
+                        labels = str_c("trial ", labels)))
+  
+
+func_load_image = function(situation){
+  readPNG(str_c("../../figures/stimuli/trial_", situation, ".png"))
+}
+
+# linking images and clips
+df.trials = df.plot %>% 
+  distinct(trial) %>% 
+  arrange(trial) %>% 
+  mutate(number = trials,
+         grob = map(.x = number, .f = ~ func_load_image(situation = .x)),
+         label = str_c("trial ", number))
+
+df.text = df.plot %>%
+  distinct(trial) %>% 
+  arrange(trial) %>% 
+  mutate(x = -Inf,
+         y = 1.2,
+         label = 1:n())
+
+# plotting
+ggplot(data = df.plot,
+       mapping = aes(x = item,
+                     y = value)) +
+  geom_col(data = df.plot %>% 
+             filter(index == "people"),
+           mapping = aes(fill = question_type,
+                         linetype = question_type),
+           alpha = 0.5,
+           color = "black") +
+  geom_linerange(mapping = aes(ymin = low,
+                               ymax = high),
+                 size = 1.5) + 
+  geom_point(data = df.plot %>% 
+               filter(index %in% c("rationality", "pivotality", 
+                                   "mixture")) %>% 
+               mutate(index = factor(index, levels = c("rationality", "pivotality", 
+                                   "mixture"))),
+             mapping = aes(shape = index,
+                           fill = index),
+             position = position_dodge(width = 0.5),
+             color = "black",
+             stroke = 1,
+             size = 4) +
+  geom_custom(data = df.trials,
+              mapping = aes(data = grob,
+                            x = -Inf,
+                            y = Inf),
+              grob_fun = function(x) rasterGrob(x,
+                                                interpolate = T,
+                                                vjust = -0.05,
+                                                hjust = 0)) + 
+  geom_text(data = df.text,
+            mapping = aes(x = x,
+                          y = y,
+                          label = label),
+            hjust = -0.5,
+            size = 20,
+            color = "white") +
+  facet_wrap(~trial,
+             labeller = labeller(label),
+             scales = "free_x",
+             nrow = 2) +
+  labs(linetype = "question",
+       shape = "model") + 
+  coord_cartesian(clip = "off",
+                  ylim = c(0, 1)) + 
+  scale_y_continuous(breaks = seq(0, 1, 0.25),
+                     labels = seq(0, 100, 25),
+                     expand = expansion(add = c(0, 0))) +
+  scale_shape_manual(values = c(21, 23, 24)) + 
+  scale_linetype_manual(values = rep(1, 3)) + 
+  scale_fill_manual(breaks = c("choice", "strength", "trees",
+                               "rationality", "pivotality", "mixture"),
+                    values = c(choice = "gray80", 
+                               strength = "gray40", 
+                               trees = "gray0", 
+                               rationality = "blue", 
+                               pivotality = "red", 
+                               mixture = "purple")) + 
+  theme(legend.position = "bottom",
+        legend.title = element_text(size=30),
+        legend.text = element_text(size=25),
+        panel.grid.major.y = element_line(),
+        axis.text.y = element_text(size = 25),
+        axis.text.x = element_text(size = 25),
+        axis.title = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        panel.background = element_rect(fill = NA, color = "black"),
+        panel.spacing.x = unit(0.5, "cm"),
+        panel.spacing.y = unit(7, "cm"),
+        plot.margin = margin(t = 7, l = 0.2, r = 0.2, b = 0.1, unit = "cm")) +
+  guides(fill = F,
+         linetype = guide_legend(override.aes = list(fill = c("gray80",
+                                                              "gray40",
+                                                              "gray0"))),
+         shape = guide_legend(override.aes = list(fill = c("blue", "red", "purple"), 
+                                                  size = 8))) 
+  
+# ggsave("../../figures/plots/selection.pdf",
+#        width = 20,
+#        height = 13)
+```
+
+
+
+# Session info
+
+```{r, echo=F}
+sessionInfo()
+```

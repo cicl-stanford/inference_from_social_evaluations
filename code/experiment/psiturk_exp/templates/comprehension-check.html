@@ -1,0 +1,139 @@
+<div id="comprehension-check">
+
+    <h1>Instructions Check</h1>
+
+    <hr />
+
+    <div class="instructions well">
+        <p> We will now begin the task! </p>
+
+        <p> Please answer these questions to the best of your ability. </p>
+
+<!--
+        <p><b>1.</b> You have 45 seconds per trial.
+            <select id="comprehension_q1" name="comprehension_q1" class="comprehensionQ">
+               <option value="noresp" SELECTED></option>
+               <option value="true">True</option>
+               <option value="false">False</option>
+             </select>
+        </p>
+        <br/>
+
+        <p><b>2.</b> There will <b>never</b> be more than one connection per trial.
+            <select id="comprehension_q2" name="comprehension_q2" class="comprehensionQ">
+               <option value="noresp" SELECTED></option>
+               <option value="true">True</option>
+               <option value="false">False</option>
+             </select>
+        </p>
+        <br/>
+
+        <p><b>3.</b> In a <b>regular</b> connection, decreasing the cause will __________ the effect.
+            <select id="comprehension_q3" name="comprehension_q3" class="comprehensionQ">
+               <option value="noresp" SELECTED></option>
+               <option value="increase">increase</option>
+               <option value="decrease">decrease</option>
+             </select>
+        </p>
+        <br/>
+
+        <p><b>4.</b> In an <b>inverted</b> connection, increasing the cause will __________ the effect.
+            <select id="comprehension_q4" name="comprehension_q4" class="comprehensionQ">
+               <option value="noresp" SELECTED></option>
+               <option value="increase">increase</option>
+               <option value="decrease">decrease</option>
+             </select>
+        </p>
+        <br/>
+
+
+
+        <p><b>5.</b> You must make a response for every possible connection between components.
+            <select id="comprehension_q5" name="comprehension_q5" class="comprehensionQ">
+               <option value="noresp" SELECTED></option>
+               <option value="true">True</option>
+               <option value="false">False</option>
+             </select>
+        </p>
+        <br/>-->
+
+    </div>
+
+    <hr />
+
+    <div class="instructionsnav">
+        <div class="row">
+            <div class="col-xs-2">
+                <button type="button" id="prev" value="prev" class="btn btn-primary btn-lg previous">
+                <span class="glyphicon glyphicon-arrow-left"></span> Previous
+                </button>
+            </div>
+            <div class="col-xs-8">
+            </div>
+            <div class="col-xs-2">
+                <button type="button" id="done_comprehension" value="done_comprehension" class="btn btn-primary btn-lg continue">
+                Next <span class="glyphicon glyphicon-arrow-right"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!--
+<script>
+
+
+$('p select[name=Browser]').change(function(e){
+  if ($('p select[name=Browser]').val() == '5'){
+    $('#browserother').show();
+  }else{
+    $('#browserother').hide();
+  }
+});
+
+
+
+
+
+
+
+
+
+      //disable button initially
+      $('#comprehension').prop('disabled', true);
+
+      //checks whether all questions were answered
+      $('.comprehensionQ').change(function () {
+         if ($('input[name=q1]:checked').length > 0 &&
+          $('input[name=q2]:checked').length > 0 &&
+          $('input[name=q3]:checked').length > 0 &&
+          $('input[name=q4]:checked').length > 0)
+         {
+          $('#comprehension').prop('disabled', false);
+      }else{
+          $('#comprehension').prop('disabled', true);
+      }});
+
+  $('#comprehension').click(function () {           
+         var q1 = $('input[name=q1]:checked').val();
+         var q2 = $('input[name=q2]:checked').val();
+         var q3 = $('input[name=q3]:checked').val();
+         var q4 = $('input[name=q4]:checked').val();
+         var q5 = $('input[name=q5]:checked').val();
+
+         // correct answers 
+          answers = ["false","false","decrease","decrease","true"];
+
+         if(q1 == answers[0] && q2 == answers[1] && q3 == answers[2] && q4 == answers[3] && q5 == answers[4]){
+              CURRENTVIEW = new TestPhase();
+         }else{
+              $('input[name=q1]').prop('checked', false);
+              $('input[name=q2]').prop('checked', false);
+              $('input[name=q3]').prop('checked', false);
+              $('input[name=q4]').prop('checked', false);
+              $('input[name=q5]').prop('checked', false);
+              CURRENTVIEW = new ComprehensionCheckFail();
+         }
+     });
+</script>

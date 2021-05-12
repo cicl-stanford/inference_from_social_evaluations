@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Trial</title>
+  </head>
+  <body>
+
+  <h1 id="stage_heading">Heading text</h1>
+  <div class="progress" style="max-width:900px">
+    <div class="progress-bar" id="myprogressbar" role="progressbar" aria-valuenow="70"
+    aria-valuemin="0" aria-valuemax="100" style="width:70%;height:50px">
+      filler text
+    </div>
+  </div>
+
+  <div class='instructionsnav'>
+    <div class='row'>
+      <div id='img-stimulus'> 
+        <img id='real-img'>
+      </div> 
+
+      <select id='A-strength' onchange='checkFinished(0);'>
+        <option name='none'> ??? </option>
+        <option name='1'> 1 </option>
+        <option name='2'> 2 </option>
+        <option name='3'> 3 </option>
+      </select>
+
+      <select id='B-strength' onchange='checkFinished(1);'>
+        <option name='none'> ??? </option>
+        <option name='1'> 1 </option>
+        <option name='2'> 2 </option>
+        <option name='3'> 3 </option>
+      </select>
+
+      <select id='C-strength' onchange='checkFinished(2);'>
+        <option name='none'> ??? </option>
+        <option name='1'> 1 </option>
+        <option name='2'> 2 </option>
+        <option name='3'> 3 </option>
+      </select>
+
+      <select id='A-choice' onchange='checkFinished(3);'>
+        <option name='none'> ??? </option>
+        <option name='fish'> fish </option>
+        <option name='trees'> trees </option>
+      </select>
+
+      <select id='B-choice' onchange='checkFinished(4);'>
+        <option name='none'> ??? </option>
+        <option name='fish'> fish </option>
+        <option name='trees'> trees </option>
+      </select>
+
+      <select id='C-choice' onchange='checkFinished(5);'>
+        <option name='none'> ??? </option>
+        <option name='fish'> fish </option>
+        <option name='trees'> trees </option>
+      </select>
+
+      <select id='trees' onchange='checkFinished(6);'>
+        <option name='none'> ??? </option>
+        <option name='1'> 1 tree </option>
+        <option name='2'> 2 trees </option>
+        <option name='3'> 3 trees </option>
+      </select>
+
+      <select id='fish' onchange='checkFinished(7);' style='margin-left:853px;margin-top:399px;width:35px'>
+        <option name='none'> ??? </option>
+        <option name='0'> 0 </option>
+        <option name='1'> 1 </option>
+        <option name='2'> 2 </option>
+        <option name='3'> 3 </option>
+        <option name='4'> 4 </option>
+        <option name='5'> 5 </option>
+        <option name='6'> 6 </option>
+        <option name='7'> 7 </option>
+        <option name='8'> 8 </option>
+        <option name='9'> 9 </option>
+      </select>
+    </div>
+  </div>
+
+  <div class="spacer"> </div>
+
+    <div class="row">
+        <div class="col-xs-3">
+            <button type="button" id="next_trial" class="btn btn-primary btn-lg continue" onclick="endTrial()" style="margin-left:755px" disabled>
+                Continue <span class="glyphicon glyphicon-arrow-right"></span>
+            </button>
+        </div>
+    </div>
+  </div>
+
+  </body>
+</html>
+
+
+
+
+
+
+
+
+

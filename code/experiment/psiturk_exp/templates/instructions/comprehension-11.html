@@ -1,0 +1,65 @@
+<div id="container-instructions">
+
+    <h1>How much is each fisherman to blame for the group's failure to get the best possible outcome?</h1>
+
+    <hr />
+
+    <img src="static/images/instructions/Comprehension_checks/Slide11.png" style="position:absolute;width:900px;"/>
+
+    <select id='A-blame' onchange='allowNext();'>
+      <option name='none'> ??? </option>
+      <option name='low'> low </option>
+      <option name='medium'> medium </option>
+      <option name='high'> high </option>
+    </select>
+
+    <select id='B-blame' onchange='allowNext();'>
+      <option name='none'> ??? </option>
+      <option name='low'> low </option>
+      <option name='medium'> medium </option>
+      <option name='high'> high </option>
+    </select>
+
+    <select id='C-blame' onchange='allowNext();'>
+      <option name='none'> ??? </option>
+      <option name='low'> low </option>
+      <option name='medium'> medium </option>
+      <option name='high'> high </option>
+    </select>
+
+    <div class="spacer" style="height:488px"> </div>
+
+    <hr />
+
+    <div class="instructionsnav" style="max-width:920px">
+        <div class="row">
+            <div class="col-xs-2">
+                <button type="button" id="prev" value="prev" class="btn btn-primary btn-lg previous">
+                <span class="glyphicon glyphicon-arrow-left"></span> Previous
+                </button>
+            </div>
+            <div class="col-xs-8">
+            </div>
+            <div class="col-xs-2">
+                <button type="button" id="next" value="next" class="btn btn-primary btn-lg continue" disabled>
+                Next <span class="glyphicon glyphicon-arrow-right"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function allowNext() {
+            if ($("#A-blame").val()!=="???" && $("#B-blame").val()!=="???" && $("#C-blame").val()!=="???" )
+            {
+                $('#next').attr('disabled', false);
+            } 
+            else 
+            {
+                $('#next').attr('disabled', true);
+            }
+        }
+        // Record data somehow
+    </script>
+
+</div>

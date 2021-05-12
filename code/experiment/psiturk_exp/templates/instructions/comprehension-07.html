@@ -1,0 +1,61 @@
+<div id="container-instructions">
+
+    <h1>What should each fisherman do, so that together they sell the most fish?</h1>
+
+    <hr />
+
+    <img src="static/images/instructions/Comprehension_checks/Slide07.png" style="position:absolute;width:900px;"/>
+
+    <select id='A-choice' onchange='allowNext();' style='visibility:visible;margin-left:196px;margin-top:233px;'>
+      <option name='none'> ??? </option>
+      <option name='fish'> fish </option>
+      <option name='trees'> trees </option>
+    </select>
+
+    <select id='B-choice' onchange='allowNext();' style='visibility:visible;margin-left:683px;margin-top:232px;'>
+      <option name='none'> ??? </option>
+      <option name='fish'> fish </option>
+      <option name='trees'> trees </option>
+    </select>
+
+    <select id='C-choice' onchange='allowNext();' style='visibility:visible;margin-left:553px;margin-top:407px;width:86px'>
+      <option name='none'> ??? </option>
+      <option name='fish'> fish </option>
+      <option name='trees'> trees </option>
+    </select>
+
+    <div class="spacer" style="height:488px"> </div>
+
+    <hr />
+
+    <div class="instructionsnav" style="max-width:920px">
+        <div class="row">
+            <div class="col-xs-2">
+                <button type="button" id="prev" value="prev" class="btn btn-primary btn-lg previous">
+                <span class="glyphicon glyphicon-arrow-left"></span> Previous
+                </button>
+            </div>
+            <div class="col-xs-8">
+            </div>
+            <div class="col-xs-2">
+                <button type="button" id="next" value="next" class="btn btn-primary btn-lg continue" disabled>
+                Next <span class="glyphicon glyphicon-arrow-right"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function allowNext() {
+            if ($("#A-choice").val()==="trees" && $("#B-choice").val()==="trees" && $("#C-choice").val()==="fish" )
+            {
+                $('#next').attr('disabled', false);
+            } 
+            else 
+            {
+                $('#next').attr('disabled', true);
+            }
+        }
+    </script>
+
+</div>

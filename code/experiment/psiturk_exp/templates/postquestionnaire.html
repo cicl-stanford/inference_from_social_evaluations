@@ -1,0 +1,54 @@
+<div id="container-questionnaire">
+    <h1>Task Complete</h1>
+
+    <hr />
+
+    <p>You are finished!  Thank you for your contributions to science. You will be eligible for full payment once you answer the following questions.</p>
+    
+    <p> <span style="font-weight:bold">Note</span>:  To continue, please answer <span style="color:red">all questions</span>.</p>
+    
+    <div class="instructions well">
+
+        <form id="postquiz" action="debrief" method="post">
+
+            <p>What factors did you take into account when trying to fill in the missing information? Do you have any comments about the experiment?</p>
+
+            <textarea name="feedback" id="feedback" class="posttestQ" style="width:760px; height:100px;"  ></textarea> 
+
+            <p><b>1.</b> How old are you?:
+              <input class="posttestQ" type="number" maxlength = "3" name="age" id="age" min="18" max="100" step = "1"> years
+            </p>
+
+            <p><b>2.</b> What is your gender?
+            <select id="sex" name="sex" class="posttestQ">
+               <option value="noresp" SELECTED></option>
+               <option value="female">Female</option>
+               <option value="male">Male</option>
+               <option value="other">Other</option>
+               <option value="noresponse">I’d prefer not to respond</option>
+             </select>
+            </p>
+            <br/>
+
+
+        </form>
+    </div>
+
+    <hr />
+
+    <div class="instructionsnav">
+        <div class="row">
+            <div class="col-xs-2">
+            </div>
+            <div class="col-xs-7">
+            </div>
+            <div class="col-xs-3">
+                <button type="button" id="done_posttest" value="next" class="btn btn-primary btn-lg continue" disabled>
+                    Continue <span class="glyphicon glyphicon-arrow-right"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+</div>

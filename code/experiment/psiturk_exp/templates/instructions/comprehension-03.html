@@ -1,0 +1,59 @@
+<div id="container-instructions">
+
+    <h1>How many fish were sold?</h1>
+
+    <hr />
+
+    <img src="static/images/instructions/Comprehension_checks/Slide03.png" style="position:absolute;"/>
+
+    <select id='fish' onchange='allowNext();' style="visibility:visible;">
+      <option name='none'> ??? </option>
+      <option name='0'> 0 </option>
+      <option name='1'> 1 </option>
+      <option name='2'> 2 </option>
+      <option name='3'> 3 </option>
+      <option name='4'> 4 </option>
+      <option name='5'> 5 </option>
+      <option name='6'> 6 </option>
+      <option name='7'> 7 </option>
+      <option name='8'> 8 </option>
+      <option name='9'> 9 </option>
+    </select>
+
+    <div class="spacer" style="height:500px"> </div>
+
+    <p> Note: you will not be able to move to the next page until you give the correct response </p>
+
+    <hr />
+
+    <div class="instructionsnav" style="max-width:920px">
+        <div class="row">
+            <div class="col-xs-2">
+                <button type="button" id="prev" value="prev" class="btn btn-primary btn-lg previous">
+                <span class="glyphicon glyphicon-arrow-left"></span> Previous
+                </button>
+            </div>
+            <div class="col-xs-8">
+            </div>
+            <div class="col-xs-2">
+                <button type="button" id="next" value="next" class="btn btn-primary btn-lg continue" disabled>
+                Next <span class="glyphicon glyphicon-arrow-right"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function allowNext() {
+            if ($("#fish").val() === '0')
+            {
+                $('#next').attr('disabled', false);
+            } 
+            else 
+            {
+                $('#next').attr('disabled', true);
+            }
+        }
+    </script>
+
+</div>
