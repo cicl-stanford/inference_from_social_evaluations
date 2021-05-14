@@ -2,9 +2,15 @@
 
 ## General points
 
-This repository contains the data, materials, figures, and analysis script for the paper "Who went fishing? Inferences from social evaluations" by Zachary J. Davis, Kelsey Allen, and Tobias Gerstenberg.
+This repository contains the data, materials, figures, and analysis script for the paper "Who went fishing? Inferences from social evaluations" by Zachary J. Davis, Kelsey R. Allen, and Tobias Gerstenberg.
 
 Feel free to reach out in case you have any questions about the repository (email: zach.davis@stanford.edu).
+
+The paper can be accessed [here](https://psyarxiv.com/x4zav)
+
+## Abstract 
+
+Humans have a remarkable ability to go beyond the observable. From seeing the current state of our shared kitchen, we can infer what happened and who did it. Prior work has shown how the physical state of the world licenses inferences about the causal history of events, and the agents that participated in these events. Here, we investigate a previously unstudied source of evidence about what happened: social evaluations. In our experiment, we present situations in which a group failed to optimally coordinate their actions. Participants learn how much each agent was blamed for the outcome, and their task is to make inferences about the situation, the agents' actions, as well as the agents' capabilities. We develop a computational model that accurately captures participants' inferences. The model assumes that people blame others by considering what they should have done, and what causal role their action played. By inverting this generative model of blame, people can figure out what happened.
 
 ## Repository structure 
 
